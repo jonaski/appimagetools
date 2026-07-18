@@ -61,10 +61,6 @@ jobs:
             cmake --install build --prefix "${APPDIR}/usr" --component "${TOOL}"
             ./build/appimagedeploy "${APPDIR}/usr/share/applications/${TOOL}.desktop"
             if [ "${TOOL}" = "appimagebuilder" ]; then
-              # The released appimagebuilder AppImage needs its own bundled runtime to embed into
-              # whatever AppDir it's later pointed at. It resolves applicationDirPath() to lib64/
-              # (where its private ld-linux lives) rather than usr/bin/, since AppRun execs ld-linux
-              # directly instead of the target binary - so that's where the runtime has to be copied.
               cp build/runtime-x86_64 "${APPDIR}/lib64/runtime-x86_64"
             fi
             ./build/appimagebuilder --version "${{env.version}}" "${APPDIR}"
