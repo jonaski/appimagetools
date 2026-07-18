@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=appimagebuilder
+Comment=Packages an already-deployed AppDir into a .AppImage file
+Exec=appimagebuilder
+Icon=appimagetools
+Categories=Utility;Development;
+Terminal=true

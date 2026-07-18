@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=appimagedeploy
+Comment=Deploys shared library dependencies and Qt/GStreamer plugins into an AppDir
+Exec=appimagedeploy
+Icon=appimagetools
+Categories=Utility;Development;
+Terminal=true

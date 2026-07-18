@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  major_minor_version: '0.1'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: opensuse/tumbleweed
+
+    steps:
+
+      - name: Set version
+        run: echo "version=${{env.major_minor_version}}.${{github.run_number}}" >> $GITHUB_ENV
+
+      - name: Show version
+        run: |
+          echo "Version: ${{env.version}}"
+
+      - name: Add devel tools repo
+        run: zypper -n addrepo https://download.opensuse.org/repositories/devel:/tools/openSUSE_Tumbleweed/ devel-tools
+
+      - name: Refresh repositories
+        run: zypper -n --gpg-auto-import-keys ref
+
+      - name: Upgrade packages
+        run: zypper -n --gpg-auto-import-keys dup
+
+      - name: Install build dependencies
+        run: zypper -n install -y git tar gzip curl cmake gcc-c++ qt6-base-devel qt6-svg-devel patchelf squashfs LIEF-devel
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake -S . -B build
+
+      - name: Build
+        run: cmake --build build -j $(nproc)
+
+      - name: Download AppImage runtime
+        run: |
+          curl -fL -o build/runtime-x86_64 https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64
+          chmod +x build/runtime-x86_64
+
+      - name: Package appimagedeploy and appimagebuilder as AppImages
+        run: |
+          set -e
+          for TOOL in appimagedeploy appimagebuilder; do
+            APPDIR="$(pwd)/build/AppDir-${TOOL}"
+            rm -rf "${APPDIR}"
+            cmake --install build --prefix "${APPDIR}/usr" --component "${TOOL}"
+            ./build/appimagedeploy "${APPDIR}/usr/share/applications/${TOOL}.desktop"
+            if [ "${TOOL}" = "appimagebuilder" ]; then
+              # The released appimagebuilder AppImage needs its own bundled runtime to embed into
+              # whatever AppDir it's later pointed at. It resolves applicationDirPath() to lib64/
+              # (where its private ld-linux lives) rather than usr/bin/, since AppRun execs ld-linux
+              # directly instead of the target binary - so that's where the runtime has to be copied.
+              cp build/runtime-x86_64 "${APPDIR}/lib64/runtime-x86_64"
+            fi
+            ./build/appimagebuilder --version "${{env.version}}" "${APPDIR}"
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: AppImages
+          path: "*.AppImage"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: "${{env.version}}"
+          name: "${{env.version}}"
+          files: "*.AppImage"

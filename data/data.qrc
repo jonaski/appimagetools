@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="apprun.sh">apprun.sh</file>
+        <file alias="excludelist.txt">excludelist.txt</file>
+        <file alias="qtlogging.ini">qtlogging.ini</file>
+    </qresource>
+</RCC>
