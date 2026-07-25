@@ -170,17 +170,9 @@ void HandleAlsa(DependencyWalker &dependency_walker) {
   for (const QString &lib : dependency_walker.all_elfs()) {
     if (!QFileInfo(lib).fileName().startsWith("libasound.so"_L1)) continue;
 
-    qInfo() << "Bundling alsa-lib directory...";
-
-    const QStringList locations = dependency_walker.FindWithPrefixInLibraryLocations(u"alsa-lib"_s);
-    if (locations.isEmpty()) {
-      qWarning() << "Could not find alsa-lib directory";
-      qWarning() << "E.g., in Alpine Linux: apk add alsa-plugins alsa-plugins-pulse";
-    }
-    else {
-      qInfo() << "Bundling dependencies of alsa-lib directory...";
-      dependency_walker.AddElfTree(locations.first());
-    }
+    // ALSA's PCM/CTL name resolution (e.g. "default:CARD=...") depends on its plugin modules (dmix, dsnoop, pulse, pipewire, ...) and the /usr/share/alsa/{alsa.conf,cards,pcm,ucm2} snippets and hardware-specific UCM profiles maintained alongside it - all versioned together by the running distribution and whatever sound server is actually active on it. Bundling the build host's libasound.so and its plugin directory instead of the running system's reliably breaks device access (e.g. "Invalid argument" opening "default:CARD=...") even on a nominally identical host, once its alsa-lib/UCM data has moved on since the build. So ALSA must always come from the running system: remove it here rather than bundle it, the same way HandleNvidia refuses to bundle libnvidia*.
+    qInfo() << "Not bundling ALSA: removing libasound.so* so it resolves against the running system's alsa-lib at runtime";
+    dependency_walker.RemoveElfsByFilenamePrefix(u"libasound.so"_s);
 
     break;
   }

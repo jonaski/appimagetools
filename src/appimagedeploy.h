@@ -27,7 +27,7 @@
 #include "gstreamerdeploy.h"
 #include "qtdeploy.h"
 
-// Top-level orchestration for the appimagedeploy tool: turns a prefix/ directory into a self-contained AppDir by discovering every ELF dependency, bundling desktop-integration support files (Gdk, Gtk, GStreamer, ALSA, PulseAudio, GLib schemas, fontconfig), Qt plugins/QML, the ELF interpreter, writing AppRun, copying and rpath-patching every dependency, and copying in copyright files.
+// Top-level orchestration for the appimagedeploy tool: turns a prefix/ directory into a self-contained AppDir by discovering every ELF dependency, bundling desktop-integration support files (Gdk, Gtk, GStreamer, PulseAudio, GLib schemas, fontconfig), Qt plugins/QML, the ELF interpreter, writing AppRun, copying and rpath-patching every dependency, and copying in copyright files. ALSA is deliberately excluded rather than bundled (see MiscDeploy::HandleAlsa).
 namespace AppImageDeploy {
 
 // `desktop_file_path` is expected at <AppDir>/usr/share/applications/foo.desktop, as accepted by AppDir::Create(). `gstreamer_plugin_names` is only consulted when `gstreamer_plugin_set` is GStreamerDeploy::PluginSet::List, and `qt_sql_plugin_names` only when `qt_sql_plugin_set` is QtDeploy::SqlPluginSet::List. Returns false and sets *error_message on any unrecoverable failure.

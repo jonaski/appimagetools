@@ -136,6 +136,14 @@ QString DependencyWalker::FindLibrary(const QString &filename) {
 
 }
 
+void DependencyWalker::RemoveElfsByFilenamePrefix(const QString &filename_prefix) {
+
+  all_elfs_.removeIf([&filename_prefix](const QString &path) {
+    return QFileInfo(path).fileName().startsWith(filename_prefix);
+  });
+
+}
+
 QStringList DependencyWalker::FindWithPrefixInLibraryLocations(const QString &prefix) {
 
   EnsureDefaultLibraryLocations();

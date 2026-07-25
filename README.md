@@ -30,7 +30,7 @@ The AppDir can either be produced by a single application's own build (e.g. Stra
 | GStreamer 1.0 | `libgstreamer-1.0.so` | The gstreamer-1.0 plugin directory (filtered - see [GStreamer plugin selection](#gstreamer-plugin-selection)) plus `gst-plugin-scanner`, plus `libsoup-3.0.so.0` if `libgstsoup.so` is present (it's `dlopen()`'d, not linked, so the ordinary dependency walk misses it) |
 | Gdk-Pixbuf | `libgdk_pixbuf` | Pixbuf loaders + a patched `loaders.cache` |
 | GTK 2/3/4 | `libgtk-<2\|3\|4>` | The matching GTK module directory, default theme (GTK ≤ 3), and a patched `immodules.cache` (GTK ≤ 3) |
-| ALSA | `libasound` | The `alsa-lib` plugin directory |
+| ALSA | `libasound` | **Never bundled** - `libasound.so*` is removed from the dependency set so it always resolves against the running system's alsa-lib (plugins, config, and hardware UCM profiles are versioned together and bundling them breaks device access on a mismatched host) |
 | PulseAudio | `libpulse` | The PulseAudio plugin directory |
 | GIO | `libgio-2.0` | `gio/modules/` + `giomodule.cache`, exposed via `GIO_EXTRA_MODULES` (see [GIO modules and the GnuTLS trust store](#gio-modules-and-the-gnutls-trust-store)) |
 | GLib schemas | `usr/share/glib-2.0/schemas` present in the AppDir | Compiles them with `glib-compile-schemas` if not already compiled |

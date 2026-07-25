@@ -42,7 +42,7 @@ bool HandleGdk(DependencyWalker &dependency_walker, const AppDir &appdir, QStrin
 // Returns false and sets error_message on failure.
 bool DeployGtkDirectory(DependencyWalker &dependency_walker, const AppDir &appdir, const int gtk_version, QString &error_message);
 
-// Bundles the alsa-lib plugin directory if libasound is a dependency. Best-effort: only warns if not found.
+// Removes libasound.so* from the dependency set if present, so ALSA is always resolved against the running system's alsa-lib rather than bundled: its plugin modules, /usr/share/alsa config, and hardware UCM profiles are versioned together by the host and bundling them breaks device access on any host whose alsa-lib/UCM data doesn't exactly match the build host's (see miscdeploy.cpp for the failure mode this avoids).
 void HandleAlsa(DependencyWalker &dependency_walker);
 
 // Bundles the gio/modules directory (and its giomodule.cache, which unlike loaders.cache/immodules.cache holds no absolute paths so needs no patching) if libgio-2.0 is a dependency, so bundled GIO can still load its extra modules (gsettings backends, TLS backend, proxy resolvers, volume monitors) via GIO_EXTRA_MODULES. Best-effort: only warns if not found.

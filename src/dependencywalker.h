@@ -49,6 +49,9 @@ class DependencyWalker {
   // With $QTDIR/$QT_ROOT_DIR added ahead of everything but rpath so a custom Qt build's own libraries are preferred over a same-named system copy. Returns an empty string if not found.
   QString FindLibrary(const QString &filename);
 
+  // Removes every already-registered ELF whose filename starts with `filename_prefix` from all_elfs(), so it is never copied into the AppDir. library_locations() is left untouched - a stale search directory is harmless. For libraries that must always be resolved against the running system rather than bundled (e.g. ALSA): once removed here, the dynamic linker falls through the AppDir rpath (now empty for this name) to the host's own copy at runtime, same as for any other unbundled system library.
+  void RemoveElfsByFilenamePrefix(const QString &filename_prefix);
+
  private:
   void EnsureDefaultLibraryLocations();
   void AppendLib(const QString &path);

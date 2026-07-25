@@ -69,6 +69,16 @@ if [ -e "${ROOT}/etc/crypto-policies/back-ends/gnutls.config" ]; then
 fi
 
 
+# ALSA (libasound.so.2) is deliberately never bundled (see MiscDeploy::HandleAlsa): its plugin modules, config, and hardware UCM profiles are versioned together by the running distro, and bundling a build-time snapshot instead breaks device access on a mismatched host.
+# But the bundled ld-linux has had "/lib", "/usr", and "/etc" patched out of its own compiled-in strings (see DeployInterpreter) so it can no longer fall back to the default system library directories or /etc/ld.so.cache to find anything not explicitly rpath'd within the AppDir.
+# Preloading the host's copy by its exact absolute path satisfies that one SONAME directly for the whole process, without reopening host-library search (and the ABI mismatches that guards against) for anything else that *is* bundled.
+for ALSA_LIB in /usr/lib/x86_64-linux-gnu/libasound.so.2 /usr/lib/aarch64-linux-gnu/libasound.so.2 /usr/lib64/libasound.so.2 /usr/lib/libasound.so.2 /lib/x86_64-linux-gnu/libasound.so.2; do
+  if [ -e "${ALSA_LIB}" ]; then
+    export LD_PRELOAD="${LD_PRELOAD:+${LD_PRELOAD}:}${ALSA_LIB}"
+    break
+  fi
+done
+
 
 # Set GStreamer paths
 GST_PLUGIN_CORE_ELEMENTS="$(find "${ROOT}" -name "libgstcoreelements.so" -type f 2>/dev/null | head -1)"
@@ -109,6 +119,7 @@ echo "GDK_PIXBUF_MODULEDIR: ${GDK_PIXBUF_MODULEDIR}"
 echo "GDK_PIXBUF_MODULE_FILE: ${GDK_PIXBUF_MODULE_FILE}"
 echo "SSL_CERT_FILE: ${SSL_CERT_FILE}"
 echo "GNUTLS_SYSTEM_PRIORITY_FILE: ${GNUTLS_SYSTEM_PRIORITY_FILE}"
+echo "LD_PRELOAD: ${LD_PRELOAD}"
 echo "GST_PLUGIN_PATH: ${GST_PLUGIN_PATH}"
 echo "GST_PLUGIN_SYSTEM_PATH: ${GST_PLUGIN_SYSTEM_PATH}"
 echo "GST_PLUGIN_SCANNER: ${GST_PLUGIN_SCANNER}"
