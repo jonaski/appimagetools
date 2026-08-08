@@ -81,6 +81,9 @@ bool CheckMksquashfsVersion(QString &error_message);
 
 bool ConvertSvgToPng(const QString &svg_path, const QString &png_path, const int size);
 
+// Runs `pkg-config --variable=<variable> <package>` and returns its trimmed stdout, or an empty string if pkg-config is missing, exits non-zero, or doesn't finish within 5s.
+QString PkgConfigVariable(const QString &package, const QString &variable);
+
 }  // namespace Utilities
 
 #endif  // UTILITIES_H

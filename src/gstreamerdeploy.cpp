@@ -179,18 +179,46 @@ QStringList SelectPlugins(const QString &plugin_dir, GStreamerDeploy::PluginSet 
 
 }
 
-// gst-plugin-scanner's directory and even its filename (e.g. Arch/openSUSE ship it as "gst-plugin-scanner-x86_64", not plain "gst-plugin-scanner") vary across distributions, so neither can be hardcoded.
-// Ask pkg-config for the authoritative directory first (it's queried on the very machine whose GStreamer is being bundled, so it reflects that distro's actual layout), then fall back to a prefix search over commonly-used locations.
-QString FindGstPluginScanner() {
+// gstreamer-1.0's plugin directory, resolved the same way GStreamer itself would look for it: $GST_PLUGIN_PATH first (a list-separator-separated search path; the first entry that exists wins), then pkg-config's gstreamer-1.0 pluginsdir (queried on the very machine whose GStreamer is being bundled, so it reflects that distro's actual layout), then falling back to wherever FindWithPrefixInLibraryLocations() already found libgstreamer-1.0's own directory.
+QString FindGstPluginsDir(DependencyWalker &dependency_walker, QString &error_message) {
 
-  QProcess pkg_config;
-  pkg_config.start(u"pkg-config"_s, {u"--variable=pluginscannerdir"_s, u"gstreamer-1.0"_s});
-  if (pkg_config.waitForFinished(5000) && pkg_config.exitCode() == 0) {
-    const QString dir = QString::fromUtf8(pkg_config.readAllStandardOutput()).trimmed();
-    if (!dir.isEmpty()) {
-      const QStringList found = Utilities::FilesWithPrefix(dir, u"gst-plugin-scanner"_s);
-      if (!found.isEmpty()) return found.first();
+  const QString from_env = qEnvironmentVariable("GST_PLUGIN_PATH");
+  if (!from_env.isEmpty()) {
+    const QStringList paths = from_env.split(QDir::listSeparator(), Qt::SkipEmptyParts);
+    for (const QString &path : paths) {
+      if (QDir(path).exists()) return path;
     }
+  }
+
+  const QString from_pkg_config = Utilities::PkgConfigVariable(u"gstreamer-1.0"_s, u"pluginsdir"_s);
+  if (!from_pkg_config.isEmpty() && QDir(from_pkg_config).exists()) return from_pkg_config;
+
+  const QStringList locations = dependency_walker.FindWithPrefixInLibraryLocations(u"gstreamer-1.0"_s);
+  if (locations.isEmpty()) {
+    error_message = u"Could not find GStreamer 1.0 directory"_s;
+    return QString();
+  }
+
+  return locations.first();
+
+}
+
+// gst-plugin-scanner's directory and even its filename (e.g. Arch/openSUSE ship it as "gst-plugin-scanner-x86_64", not plain "gst-plugin-scanner") vary across distributions, so neither can be hardcoded.
+// Checked in the same order as the plugins directory above: $GST_PLUGIN_SCANNER first (an exact file path, unlike GST_PLUGIN_PATH), then pkg-config's pluginscannerdir, then `plugins_dir` itself (the scanner commonly lives right alongside the plugins it was resolved from), then a prefix search over commonly-used fallback locations.
+QString FindGstPluginScanner(const QString &plugins_dir) {
+
+  const QString from_env = qEnvironmentVariable("GST_PLUGIN_SCANNER");
+  if (!from_env.isEmpty() && QFile::exists(from_env)) return from_env;
+
+  const QString from_pkg_config = Utilities::PkgConfigVariable(u"gstreamer-1.0"_s, u"pluginscannerdir"_s);
+  if (!from_pkg_config.isEmpty()) {
+    const QStringList found = Utilities::FilesWithPrefix(from_pkg_config, u"gst-plugin-scanner"_s);
+    if (!found.isEmpty()) return found.first();
+  }
+
+  if (!plugins_dir.isEmpty()) {
+    const QStringList found = Utilities::FilesWithPrefix(plugins_dir, u"gst-plugin-scanner"_s);
+    if (!found.isEmpty()) return found.first();
   }
 
   static const QStringList kCandidateDirs = {
@@ -240,13 +268,10 @@ bool Deploy(DependencyWalker &dependency_walker, PluginSet plugin_set, const QSt
     if (!QFileInfo(lib).fileName().startsWith("libgstreamer-1.0"_L1)) continue;
 
     qInfo() << "Bundling GStreamer 1.0 directory (for GST_PLUGIN_PATH)...";
-    const QStringList locations = dependency_walker.FindWithPrefixInLibraryLocations(u"gstreamer-1.0"_s);
-    if (locations.isEmpty()) {
-      error_message = u"Could not find GStreamer 1.0 directory"_s;
-      return false;
-    }
+    const QString plugins_dir = FindGstPluginsDir(dependency_walker, error_message);
+    if (plugins_dir.isEmpty()) return false;
 
-    const QStringList plugin_files = SelectPlugins(locations.first(), plugin_set, plugin_names, error_message);
+    const QStringList plugin_files = SelectPlugins(plugins_dir, plugin_set, plugin_names, error_message);
     if (plugin_files.isEmpty() && !error_message.isEmpty()) return false;
 
     qInfo() << "Bundling dependencies of GStreamer 1.0 directory...";
@@ -257,7 +282,7 @@ bool Deploy(DependencyWalker &dependency_walker, PluginSet plugin_set, const QSt
     HandleSoupDlopenDependency(dependency_walker);
 
     qInfo() << "Determining gst-plugin-scanner...";
-    const QString scanner = FindGstPluginScanner();
+    const QString scanner = FindGstPluginScanner(plugins_dir);
     if (scanner.isEmpty()) {
       qWarning() << "Could not find gst-plugin-scanner; external GStreamer plugins (e.g. some codecs) may fail to load in the AppImage.";
     }

@@ -194,15 +194,39 @@ void HandleGioModules(DependencyWalker &dependency_walker, const AppDir &appdir)
 
     qInfo() << "Bundling GIO modules directory (for GIO_EXTRA_MODULES)...";
 
-    // Not done via FindWithPrefixInLibraryLocations("gio"): that does a fuzzy filename-prefix scan of whichever library_location is searched first, and "gio" is short and generic enough to falsely match an unrelated file (e.g. the app's own binary, if its name happens to start with "gio") before ever reaching the real gio/ directory. Checking for the exact "gio/modules" subpath avoids that.
+    // Resolved the same way GIO itself would look for extra modules: $GIO_EXTRA_MODULES first, then pkg-config's gio-2.0 libdir (queried on the very machine whose GIO is being bundled, so it reflects that distro's actual layout), then falling back to scanning the locations DependencyWalker already found libgio-2.0 in.
     QString modules_dir;
-    for (const QString &location : dependency_walker.library_locations()) {
-      const QString candidate = location + "/gio/modules"_L1;
-      if (QDir(candidate).exists()) {
-        modules_dir = candidate;
-        break;
+
+    const QString from_env = qEnvironmentVariable("GIO_EXTRA_MODULES");
+    if (!from_env.isEmpty()) {
+      const QStringList paths = from_env.split(QDir::listSeparator(), Qt::SkipEmptyParts);
+      for (const QString &path : paths) {
+        if (QDir(path).exists()) {
+          modules_dir = path;
+          break;
+        }
       }
     }
+
+    if (modules_dir.isEmpty()) {
+      const QString libdir = Utilities::PkgConfigVariable(u"gio-2.0"_s, u"libdir"_s);
+      if (!libdir.isEmpty()) {
+        const QString candidate = libdir + "/gio/modules"_L1;
+        if (QDir(candidate).exists()) modules_dir = candidate;
+      }
+    }
+
+    // Not done via FindWithPrefixInLibraryLocations("gio"): that does a fuzzy filename-prefix scan of whichever library_location is searched first, and "gio" is short and generic enough to falsely match an unrelated file (e.g. the app's own binary, if its name happens to start with "gio") before ever reaching the real gio/ directory. Checking for the exact "gio/modules" subpath avoids that.
+    if (modules_dir.isEmpty()) {
+      for (const QString &location : dependency_walker.library_locations()) {
+        const QString candidate = location + "/gio/modules"_L1;
+        if (QDir(candidate).exists()) {
+          modules_dir = candidate;
+          break;
+        }
+      }
+    }
+
     if (modules_dir.isEmpty()) {
       qWarning() << "Could not find GIO modules directory";
       break;
