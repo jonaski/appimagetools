@@ -390,4 +390,19 @@ bool ConvertSvgToPng(const QString &svg_path, const QString &png_path, const int
 
 }
 
+QString PkgConfigVariable(const QString &package, const QString &variable) {
+
+  QProcess process;
+  process.start(u"pkg-config"_s, {u"--variable=%1"_s.arg(variable), package});
+  if (!process.waitForFinished(5000)) {
+    process.kill();
+    process.waitForFinished(-1);
+    return QString();
+  }
+  if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) return QString();
+
+  return QString::fromUtf8(process.readAllStandardOutput()).trimmed();
+
+}
+
 }  // namespace Utilities
