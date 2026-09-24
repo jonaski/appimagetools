@@ -51,7 +51,9 @@ QStringList RuntimeFileCandidates(const QString &arch) {
   QStringList runtime_dirs;
   const QStringList arguments = QCoreApplication::arguments();
   if (!arguments.isEmpty() && arguments.first().contains(u'/')) {
-    const QString executable_dir = QFileInfo(arguments.first()).absolutePath();
+    const QFileInfo executable_info(arguments.first());
+    const QString executable_canonical_path = executable_info.canonicalFilePath();
+    const QString executable_dir = executable_canonical_path.isEmpty() ? executable_info.absolutePath() : QFileInfo(executable_canonical_path).absolutePath();
     runtime_dirs << executable_dir + "/../share/AppImageKit/runtime"_L1
                  << executable_dir
                  << executable_dir + "/../lib64"_L1
