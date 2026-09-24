@@ -52,6 +52,9 @@ int main(int argc, char *argv[]) {
   const QCommandLineOption version_option(u"version"_s, u"Version string to stamp into X-AppImage-Version and use in the output filename; if not given, detected by running the AppDir's main executable (from Exec= in its .desktop file) with --version"_s, u"version"_s);
   parser.addOption(version_option);
 
+  const QCommandLineOption runtime_file_option(u"runtime-file"_s, u"Path to the AppImage runtime to embed, instead of the runtime bundled with appimagebuilder"_s, u"file"_s);
+  parser.addOption(runtime_file_option);
+
   parser.process(app);
 
   const QStringList positional = parser.positionalArguments();
@@ -79,6 +82,7 @@ int main(int argc, char *argv[]) {
 
   AppImageBuilder::Options options;
   options.version = parser.value(version_option);
+  options.runtime_file = parser.value(runtime_file_option);
   QString output_path;
   if (!AppImageBuilder::Build(app_dir_info.canonicalFilePath(), options, output_path, error_message)) {
     qCritical().noquote() << "ERROR:" << error_message;
