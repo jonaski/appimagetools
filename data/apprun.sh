@@ -40,7 +40,7 @@ if [ -z "$MAIN_BIN" ] ; then
 fi
 
 # Sort the result, since find returns the files in filesystem order, which is not the same on all systems.
-LD_LINUX=$(find "${ROOT}" -name 'ld-*.so.*' | sort | head -n 1)
+LD_LINUX=$(find "${ROOT}" -name 'ld-*.so.*' | LC_ALL=C sort | head -n 1)
 
 
 # Set paths
