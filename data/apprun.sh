@@ -39,7 +39,8 @@ if [ -z "$MAIN_BIN" ] ; then
   MAIN_BIN=$(find "${ROOT}/usr/bin" -name "${MAIN}" | head -n 1)
 fi
 
-LD_LINUX=$(find "${ROOT}" -name 'ld-*.so.*' | head -n 1)
+# Sort the result, since find returns the files in filesystem order, which is not the same on all systems.
+LD_LINUX=$(find "${ROOT}" -name 'ld-*.so.*' | sort | head -n 1)
 
 
 # Set paths

@@ -30,7 +30,7 @@ struct Options {
   // Output path. If empty, defaults to "<Name>-<version>-Linux-<arch>.AppImage" in the current directory (or inside `destination` if it names an existing directory).
   QString destination;
 
-  // Path to the AppImage runtime binary to embed. If empty, looked up as "runtime-<arch>" next to the executable, or under ../share/AppImageKit/runtime/ relative to it.
+  // Path to the AppImage runtime binary to embed. If empty, looked up as "runtime-<arch>" under ../share/AppImageKit/runtime/ relative to the executable, next to it, or in lib64 or usr/lib64 of the AppImage.
   QString runtime_file;
 
   // mksquashfs -comp value.

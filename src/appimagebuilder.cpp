@@ -17,6 +17,8 @@
  *
  */
 
+#include <utility>
+
 #include <QCoreApplication>
 #include <QString>
 #include <QStringList>
@@ -36,6 +38,42 @@
 using namespace Qt::Literals::StringLiterals;
 
 namespace AppImageBuilder {
+
+namespace {
+
+// Returns the paths where the bundled AppImage runtime is looked for, in order of preference.
+// Inside an AppImage the executable is started through the bundled dynamic loader, and applicationDirPath() then returns the directory of the loader instead of the executable.
+// The loader can be in either lib64 or usr/lib64, so also look relative to the executable path from argv[0], which the dynamic loader sets to the path of the executable.
+QStringList RuntimeFileCandidates(const QString &arch) {
+
+  const QString runtime_filename = "runtime-"_L1 + arch;
+
+  QStringList runtime_dirs;
+  const QStringList arguments = QCoreApplication::arguments();
+  if (!arguments.isEmpty() && arguments.first().contains(u'/')) {
+    const QString executable_dir = QFileInfo(arguments.first()).absolutePath();
+    runtime_dirs << executable_dir + "/../share/AppImageKit/runtime"_L1
+                 << executable_dir
+                 << executable_dir + "/../lib64"_L1
+                 << executable_dir + "/../../lib64"_L1;
+  }
+  const QString application_dir = QCoreApplication::applicationDirPath();
+  runtime_dirs << application_dir + "/../share/AppImageKit/runtime"_L1
+               << application_dir;
+
+  QStringList runtime_files;
+  for (const QString &runtime_dir : std::as_const(runtime_dirs)) {
+    const QString runtime_file = QDir::cleanPath(runtime_dir + u'/' + runtime_filename);
+    if (!runtime_files.contains(runtime_file)) {
+      runtime_files << runtime_file;
+    }
+  }
+
+  return runtime_files;
+
+}
+
+}  // namespace
 
 bool Build(const QString &app_dir_path, const Options &options, QString &output_path, QString &error_message) {
 
@@ -177,12 +215,20 @@ bool Build(const QString &app_dir_path, const Options &options, QString &output_
 
   QString runtime_file = options.runtime_file;
   if (runtime_file.isEmpty()) {
-    QString runtime_dir = QDir::cleanPath(QCoreApplication::applicationDirPath() + "/../share/AppImageKit/runtime/"_L1);
-    if (!QDir(runtime_dir).exists()) runtime_dir = QCoreApplication::applicationDirPath();
-    runtime_file = runtime_dir + "/runtime-"_L1 + arch;
+    const QStringList runtime_file_candidates = RuntimeFileCandidates(arch);
+    for (const QString &runtime_file_candidate : runtime_file_candidates) {
+      if (QFileInfo::exists(runtime_file_candidate)) {
+        runtime_file = runtime_file_candidate;
+        break;
+      }
+    }
+    if (runtime_file.isEmpty()) {
+      error_message = u"Cannot find runtime-%1, looked in:\n%2\nIt should have been bundled, but you can get it from https://github.com/AppImage/type2-runtime/releases/tag/continuous and pass it with --runtime-file"_s.arg(arch, runtime_file_candidates.join(u'\n'));
+      return false;
+    }
   }
-  if (!QFileInfo::exists(runtime_file)) {
-    error_message = u"Cannot find %1. It should have been bundled, but you can get it from https://github.com/AppImage/type2-runtime/releases/tag/continuous"_s.arg(runtime_file);
+  else if (!QFileInfo::exists(runtime_file)) {
+    error_message = u"Runtime file %1 does not exist"_s.arg(runtime_file);
     return false;
   }
 
